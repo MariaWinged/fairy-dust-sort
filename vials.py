@@ -176,29 +176,31 @@ class StateGraph:
         vial_set.validate()
         initial_state = str(vial_set)
         self._current_state = 0
-        self._states_queue = [(initial_state, -1)]
+        self._states_queue = [initial_state]
         self._states_set = set()
         self._states_set.add(initial_state)
         self._is_solution_found = vial_set.is_sorted
-        self._operations = [("", "")]
+        self._operations = [(("", ""), -1)]
         self._solution_state = -1
 
     def _calculate_state(self, vial_set: VialSet, index_from: int, index_to: int):
         count = vial_set.transfer(index_from, index_to)
         state = str(vial_set)
         if count and state not in self._states_set:
-            self._states_queue.append((state, self._current_state))
+            self._states_queue.append(state)
             self._states_set.add(state)
             if vial_set.is_sorted and not self._is_solution_found:
                 self._is_solution_found = True
                 self._solution_state = len(self._states_queue) - 1
             vial_set.cancel_transfer(index_from, index_to, count)
-            self._operations.append((str(vial_set.get_vial(index_from)), str(vial_set.get_vial(index_to))))
+            self._operations.append(
+                ((str(vial_set.get_vial(index_from)), str(vial_set.get_vial(index_to))), self._current_state)
+            )
         else:
             vial_set.cancel_transfer(index_from, index_to, count)
 
     def _step(self):
-        vial_set = VialSet.from_str(self._states_queue[self._current_state][0])
+        vial_set = VialSet.from_str(self._states_queue[self._current_state])
         for v1 in range(len(vial_set) - 1):
             v2 = v1 + 1
             while v2 < len(vial_set) and (vial_set.can_transfer(v2, v1) or vial_set.can_transfer(v1, v2)):
@@ -210,10 +212,10 @@ class StateGraph:
     def build_graph(self) -> list[tuple[str, str]]:
         while self._current_state < len(self._states_queue):
             self._step()
-        path = [self._operations[self._solution_state]]
-        state = self._states_queue[self._solution_state][1]
+        path = [self._operations[self._solution_state][0]]
+        state = self._operations[self._solution_state][1]
         while state != 0:
-            path.append(self._operations[state])
-            state = self._states_queue[state][1]
+            path.append(self._operations[state][0])
+            state = self._operations[state][1]
         path.reverse()
         return path
